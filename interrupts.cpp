@@ -117,9 +117,14 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the child's trace, run the child (HINT: think recursion)
 
-            auto [ex2, sys2, t2] = simulate_trace( child_trace, current_time, vectors, delays, external_files, current, wait_queue);
+            //allocate memory for fork here
+            current = PCB(current.partition_number + 1, current.partition_number, "init", 1, -1);
+            allocate_memory(&current);
+
+            //recursion for child:
+            auto [ex2, sys2, t2] = simulate_trace(child_trace, current_time, vectors, delays, external_files, current, wait_queue);
             execution += ex2;
-            sys2 += sys2;
+            system_status += sys2;
             current_time += t2;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
