@@ -1,6 +1,27 @@
 Interrupts Simulator
 ====================
 
+TODO:
+- [] rewrite README
+- [] fork implementation
+- [] exec implementation
+- [] test cases
+- [] child vs. parent detection
+- [] old code integration
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Overview
 --------
 This simulator models interrupt handling in an operating system.
