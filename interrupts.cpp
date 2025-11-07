@@ -5,190 +5,180 @@
  *
  */
 
-#include "interrupts.hpp"
+#include<interrupts.hpp>
 
-int main(int argc, char **argv)
-{
+std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string> trace_file, int time, std::vector<std::string> vectors, std::vector<int> delays, std::vector<external_file> external_files, PCB current, std::vector<PCB> wait_queue) {
 
-    // vectors is a C++ std::vector of strings that contain the address of the ISR
-    // delays  is a C++ std::vector of ints that contain the delays of each device
-    // the index of these elemens is the device number, starting from 0
-    auto [vectors, delays] = parse_args(argc, argv);
+    std::string trace;      //!< string to store single line of trace file
+    std::string execution = "";  //!< string to accumulate the execution output
+    std::string system_status = "";  //!< string to accumulate the system status output
+    int current_time = time;
+
+    //parse each line of the input trace file. 'for' loop to keep track of indices.
+    for(size_t i = 0; i < trace_file.size(); i++) {
+        auto trace = trace_file[i];
+
+        auto [activity, duration_intr, program_name] = parse_trace(trace);
+
+        if(activity == "CPU") { //As per Assignment 1
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", CPU Burst\n";
+            current_time += duration_intr;
+        } else if(activity == "SYSCALL") { //As per Assignment 1
+            auto [intr, time] = intr_boilerplate(current_time, duration_intr, 10, vectors);
+            execution += intr;
+            current_time = time;
+
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", SYSCALL ISR (ADD STEPS HERE)\n";
+            current_time += delays[duration_intr];
+
+            execution +=  std::to_string(current_time) + ", 1, IRET\n";
+            current_time += 1;
+        } else if(activity == "END_IO") {
+            auto [intr, time] = intr_boilerplate(current_time, duration_intr, 10, vectors);
+            current_time = time;
+            execution += intr;
+
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", ENDIO ISR(ADD STEPS HERE)\n";
+            current_time += delays[duration_intr];
+
+            execution +=  std::to_string(current_time) + ", 1, IRET\n";
+            current_time += 1;
+        } else if(activity == "FORK") {
+            auto [intr, time] = intr_boilerplate(current_time, 2, 10, vectors);
+            execution += intr;
+            current_time = time;
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            //Add your FORK output here
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+
+            //The following loop helps you do 2 things:
+            // * Collect the trace of the chile (and only the child, skip parent)
+            // * Get the index of where the parent is supposed to start executing from
+            std::vector<std::string> child_trace;
+            bool skip = true;
+            bool exec_flag = false;
+            int parent_index = 0;
+
+            for(size_t j = i; j < trace_file.size(); j++) {
+                auto [_activity, _duration, _pn] = parse_trace(trace_file[j]);
+                if(skip && _activity == "IF_CHILD") {
+                    skip = false;
+                    continue;
+                } else if(_activity == "IF_PARENT"){
+                    skip = true;
+                    parent_index = j;
+                    if(exec_flag) {
+                        break;
+                    }
+                } else if(skip && _activity == "ENDIF") {
+                    skip = false;
+                    continue;
+                } else if(!skip && _activity == "EXEC") {
+                    skip = true;
+                    child_trace.push_back(trace_file[j]);
+                    exec_flag = true;
+                }
+
+                if(!skip) {
+                    child_trace.push_back(trace_file[j]);
+                }
+            }
+            i = parent_index;
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            //With the child's trace, run the child (HINT: think recursion)
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+
+
+        } else if(activity == "EXEC") {
+            auto [intr, time] = intr_boilerplate(current_time, 3, 10, vectors);
+            current_time = time;
+            execution += intr;
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            //Add your EXEC output here
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+
+
+            std::ifstream exec_trace_file(program_name + ".txt");
+
+            std::vector<std::string> exec_traces;
+            std::string exec_trace;
+            while(std::getline(exec_trace_file, exec_trace)) {
+                exec_traces.push_back(exec_trace);
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            //With the exec's trace (i.e. trace of external program), run the exec (HINT: think recursion)
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////
+
+            break; //Why is this important? (answer in report)
+
+        }
+    }
+
+    return {execution, system_status, current_time};
+}
+
+int main(int argc, char** argv) {
+
+    //vectors is a C++ std::vector of strings that contain the address of the ISR
+    //delays  is a C++ std::vector of ints that contain the delays of each device
+    //the index of these elemens is the device number, starting from 0
+    //external_files is a C++ std::vector of the struct 'external_file'. Check the struct in 
+    //interrupt.hpp to know more.
+    auto [vectors, delays, external_files] = parse_args(argc, argv);
     std::ifstream input_file(argv[1]);
 
-    std::string trace;     //!< string to store single line of trace file
-    std::string execution; //!< string to accumulate the execution output
+    //Just a sanity check to know what files you have
+    print_external_files(external_files);
+
+    //Make initial PCB (notice how partition is not assigned yet)
+    PCB current(0, -1, "init", 1, -1);
+    //Update memory (partition is assigned here, you must implement this function)
+    if(!allocate_memory(&current)) {
+        std::cerr << "ERROR! Memory allocation failed!" << std::endl;
+    }
+
+    std::vector<PCB> wait_queue;
 
     /******************ADD YOUR VARIABLES HERE*************************/
-    long long current_time = 0; // current_time variable to track simulation time
-    int context_time = 10;      // default context save/restore time (ms)
-    int isr_time = 40;          // default ISR execution time (ms)
-    std::string output_filename;
-    if (argc >= 5)
-        output_filename = argv[4];
-    if (argc >= 6)
-        context_time = std::stoi(argv[5]);
-    if (argc >= 7)
-        isr_time = std::stoi(argv[6]);
-    enum EventType
-    {
-        CPU_BURST,
-        SYSCALL,
-        END_IO
-    };
-    struct Event
-    {
-        EventType type;
-        int start_time;   // time when event starts (ms)
-        int duration;     // how long it takes (ms)
-        std::string desc; // text label (e.g. "CPU burst", "SYSCALL 7")
-    };
-    struct CPUEvent : public Event
-    {
-        int burst_time; // duration from trace file
-        CPUEvent(int duration_ms, long long &start_time)
-        {
-            type = CPU_BURST;
-            burst_time = duration_ms;
-            duration = duration_ms;
-            desc = std::to_string(start_time) + ", " + std::to_string(burst_time) + ", CPU burst\n";
-            start_time += burst_time;
-        }
-    };
-    struct SyscallEvent : public Event
-    {
-        int device_id;           // e.g., 7
-        std::string ISR_address; // from vector_table.txt (e.g. 0x0E)
-        int io_delay;            // from device_table.txt (e.g. 110 ms)
-        int isr_time;            // ISR execution time (variable, default 40 ms)        // context save/restore time (variable, default 10 ms)
-        int context_time;        // context save/restore time (variable, default 10 ms)
-        SyscallEvent(int dev, std::string ISR_Addr, int delay, long long &start_time, int &context_t, int &isr_t)
-        {
-            device_id = dev;
-            ISR_address = ISR_Addr;
-            io_delay = delay;
-            type = SYSCALL; // default value (can vary)
-            long long event_start = start_time;
-            context_time = context_t;
-            isr_time = isr_t;
-            desc = "";
-            // 1. switch to kernel mode
-            desc += std::to_string(start_time) + ", 1, switch to kernel mode\n";
-            start_time += 1;
 
-            // 2. save context
-            desc += std::to_string(start_time) + ", " + std::to_string(context_time) + ", save context\n";
-            start_time += context_time;
 
-            // 3. find vector entry
-            desc += std::to_string(start_time) + ", 1, find vector " + std::to_string(device_id) + " in memory position 0x" + std::to_string(device_id * 2) + "\n";
-            start_time += 1;
-
-            // 4. load ISR address into PC
-
-            desc += std::to_string(start_time) + ", 1, load ISR address " + ISR_Addr + " into PC\n";
-            start_time += 1;
-
-            // 5. run ISR (device driver setup)
-            desc += std::to_string(start_time) + ", " + std::to_string(isr_time) + ", SYSCALL: run the ISR (device driver for device " + std::to_string(device_id) + ")\n";
-            start_time += isr_time;
-
-            // 6. device performing I/O operation
-            desc += std::to_string(start_time) + ", " + std::to_string(io_delay - isr_time) + ", device " + std::to_string(device_id) + " performing I/O operation and transferring device data to memory (device busy)\n";
-            start_time += io_delay - isr_time;
-
-            // 7. return from interrupt
-            desc += std::to_string(start_time) + ", 1, IRET (return from interrupt)\n";
-            start_time += 1;
-            duration = start_time - event_start;
-        };
-    };
-    struct EndIOEvent : public Event
-    {
-        int device_id;           // e.g., 7 (used as the vector index)
-        std::string ISR_address; // ISR address value from vector_table.txt (e.g., 0x001C)
-        int io_delay;            // same io_delay from device_table.txt
-        int isr_time;            // ISR execution time (default 40 ms)
-        int context_time;        // context save/restore time (default 10 ms)
-
-        EndIOEvent(int dev, std::string isrAddr, int delay, long long &start_time, int &context_t, int &isr_t)
-        {
-            device_id = dev;
-            ISR_address = isrAddr;
-            type = END_IO;
-            long long event_start = start_time;
-            int io_delay = delay;
-            context_time = context_t;
-            isr_time = isr_t;
-            desc = "";
-
-            // 1. switch to kernel mode
-            desc += std::to_string(start_time) + ", 1, switch to kernel mode\n";
-            start_time += 1;
-
-            // 2. save context
-            desc += std::to_string(start_time) + ", " + std::to_string(context_time) + ", save context\n";
-            start_time += context_time;
-
-            // 3. find vector entry in memory (index = device_id)
-            desc += std::to_string(start_time) + ", 1, find vector " + std::to_string(device_id) + " in memory position 0x" + std::to_string(device_id * 2) + "\n";
-            start_time += 1;
-
-            // 4. load ISR address from vector table into PC
-            desc += std::to_string(start_time) + ", 1, load ISR address " +
-                    ISR_address + " into the PC\n";
-            start_time += 1;
-
-            // 5. run ISR (device driver for end of I/O)
-            desc += std::to_string(start_time) + ", " +
-                    std::to_string(isr_time) + ", ENDIO: run the ISR (device driver for device " +
-                    std::to_string(device_id) + ")\n";
-            start_time += isr_time;
-
-            // 6. check device status or mark I/O complete (added this because shown in TA example)
-            desc += std::to_string(start_time) + ", " + std::to_string(io_delay - isr_time) + ", check device status and complete operation\n";
-            start_time += io_delay - isr_time;
-
-            // 7. return from interrupt
-            desc += std::to_string(start_time) + ", 1, IRET (return from interrupt)\n";
-            start_time += 1;
-
-            // total elapsed time
-            duration = start_time - event_start;
-        }
-    };
     /******************************************************************/
 
-    // parse each line of the input trace file
-    while (std::getline(input_file, trace))
-    {
-        auto [activity, duration_intr] = parse_trace(trace);
-
-        /******************ADD YOUR SIMULATION CODE HERE*************************/
-        /***********SIMULATION CODE ***********/
-        if (activity == "CPU")
-        {
-            CPUEvent cpu(duration_intr, current_time);
-            execution += cpu.desc;
-        }
-        else if (activity == "SYSCALL")
-        {
-            SyscallEvent syscall(duration_intr, vectors[duration_intr], delays[duration_intr], current_time, context_time, isr_time);
-            execution += syscall.desc;
-        }
-        else if (activity == "END_IO")
-        {
-            EndIOEvent endio(duration_intr, vectors[duration_intr], delays[duration_intr], current_time, context_time, isr_time);
-            execution += endio.desc;
-        }
-        /***********SIMULATION CODE ***********/
-
-        /******************************************************************/
+    //Converting the trace file into a vector of strings.
+    std::vector<std::string> trace_file;
+    std::string trace;
+    while(std::getline(input_file, trace)) {
+        trace_file.push_back(trace);
     }
+
+    auto [execution, system_status, _] = simulate_trace(   trace_file, 
+                                            0, 
+                                            vectors, 
+                                            delays,
+                                            external_files, 
+                                            current, 
+                                            wait_queue);
+
     input_file.close();
-    if (output_filename.empty())
-        write_output(execution);
-    else
-        write_output(execution, output_filename);
+
+    write_output(execution, "execution.txt");
+    write_output(system_status, "system_status.txt");
+
     return 0;
 }
