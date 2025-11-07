@@ -138,7 +138,36 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             ///////////////////////////////////////////////////////////////////////////////////////////
             //Add your EXEC output here
 
+            //find specific process in external files
+            int file_length;
+            for(external_file program: external_files){
+                if (program.program_name == program_name){
+                    file_length = program.size;
+                }
+            }
 
+            //5) determine program length
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", Program is " + std::to_string(file_length) + " Mb large\n";
+            current_time += duration_intr;
+
+            //6) load program to memory
+            execution += std::to_string(current_time) + ", " + std::to_string(file_length * 15) + ", loading program into memory\n";
+            current_time += file_length * 15;
+
+            //7) mark parition
+            execution += std::to_string(current_time) + ", 3, marking parition as occupied\n";
+            current_time += 3;
+
+            //8) update PCB
+            execution += std::to_string(current_time) + ", 6, updating PCB\n";
+            current_time += 6;
+    
+            //9) call scheduler
+            execution += std::to_string(current_time) + ", 0, scheduler called";
+
+            //10) return from interrupt
+            execution +=  std::to_string(current_time) + ", 1, IRET\n";
+            current_time += 1;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
