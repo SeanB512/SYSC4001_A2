@@ -24,26 +24,42 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", CPU Burst\n";
             current_time += duration_intr;
         } else if(activity == "SYSCALL") { //As per Assignment 1
+            //1-4)
             auto [intr, time] = intr_boilerplate(current_time, duration_intr, 10, vectors);
             execution += intr;
             current_time = time;
 
-            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", SYSCALL ISR (ADD STEPS HERE)\n";
-            current_time += delays[duration_intr];
+            //5) run ISR (device driver setup)
+            execution += std::to_string(current_time) + ", 40, SYSCALL: run the ISR (device driver for device " + std::to_string(duration_intr) + ")\n";
+            current_time += 40;
 
+            //6) device performing I/O operation
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr] - 40) + ", device " + std::to_string(duration_intr) + " performing I/O operation and transferring device data to memory (device busy)\n";
+            current_time += delays[duration_intr] - 40;
+
+            //7) return from interrupt
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
             current_time += 1;
+            
         } else if(activity == "END_IO") {
+            //1-4)
             auto [intr, time] = intr_boilerplate(current_time, duration_intr, 10, vectors);
             current_time = time;
             execution += intr;
 
-            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", ENDIO ISR(ADD STEPS HERE)\n";
-            current_time += delays[duration_intr];
+            //5) run ISR (device for end of I/O)
+            execution += std::to_string(current_time) + ", 40, ENDIO: run the ISR (device driver for device " + std::to_string(duration_intr) + ")\n";
+            current_time += 40;
 
+            //6) check device status or mark I/O complete (added this because shown in TA example)
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr] - 40) + ", device " + std::to_string(duration_intr) + ", check device status and complete operation\n";
+            current_time += delays[duration_intr] - 40;
+
+            //7) return from interrupt
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
             current_time += 1;
         } else if(activity == "FORK") {
+            //1-4)
             auto [intr, time] = intr_boilerplate(current_time, 2, 10, vectors);
             execution += intr;
             current_time = time;
@@ -51,13 +67,21 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             ///////////////////////////////////////////////////////////////////////////////////////////
             //Add your FORK output here
 
-            
+            //5) clone PCB
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", clone the PCB";
+            current_time += duration_intr;
 
+            //6) call scheduler
+            execution += std::to_string(current_time) + ", 0, scheduler called";
+
+            //7) return from interrupt
+            execution +=  std::to_string(current_time) + ", 1, IRET\n";
+            current_time += 1;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
             //The following loop helps you do 2 things:
-            // * Collect the trace of the chile (and only the child, skip parent)
+            // * Collect the trace of the child (and only the child, skip parent)
             // * Get the index of where the parent is supposed to start executing from
             std::vector<std::string> child_trace;
             bool skip = true;
