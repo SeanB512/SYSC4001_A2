@@ -68,11 +68,11 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             //Add your FORK output here
 
             //5) clone PCB
-            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", clone the PCB";
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", clone the PCB\n";
             current_time += duration_intr;
 
             //6) call scheduler
-            execution += std::to_string(current_time) + ", 0, scheduler called";
+            execution += std::to_string(current_time) + ", 0, scheduler called\n";
 
             //7) return from interrupt
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
@@ -162,7 +162,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             current_time += 6;
     
             //9) call scheduler
-            execution += std::to_string(current_time) + ", 0, scheduler called";
+            execution += std::to_string(current_time) + ", 0, scheduler called\n";
 
             //10) return from interrupt
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
@@ -192,11 +192,16 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             //add to system status
             system_status += print_PCB(current, wait_queue);
 
-            //exec recursion
+            //exec recursion (run program)
             auto [ex3, sys3, t3] = simulate_trace(exec_traces, current_time, vectors, delays, external_files, current, wait_queue);
             execution += ex3;
             system_status += sys3;
             current_time += t3;
+
+            //end process after exec ends
+            free_memory(&current);
+            current = wait_queue.back();
+            wait_queue.pop_back();
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -232,6 +237,7 @@ int main(int argc, char** argv) {
 
     /******************ADD YOUR VARIABLES HERE*************************/
 
+    
 
     /******************************************************************/
 
