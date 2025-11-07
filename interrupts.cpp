@@ -117,9 +117,13 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the child's trace, run the child (HINT: think recursion)
 
-            //allocate memory for fork here
+            //allocate memory for fork
+            wait_queue.push_back(current);
             current = PCB(current.partition_number + 1, current.partition_number, "init", 1, -1);
             allocate_memory(&current);
+            
+            //add to system status (output to be written into file)
+            system_status += print_PCB(current, wait_queue);
 
             //recursion for child:
             auto [ex2, sys2, t2] = simulate_trace(child_trace, current_time, vectors, delays, external_files, current, wait_queue);
@@ -139,12 +143,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             //Add your EXEC output here
 
             //find specific process in external files
-            int file_length;
-            for(external_file program: external_files){
-                if (program.program_name == program_name){
-                    file_length = program.size;
-                }
-            }
+            int file_length = get_size(program_name, external_files);
 
             //5) determine program length
             execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", Program is " + std::to_string(file_length) + " Mb large\n";
@@ -183,7 +182,21 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the exec's trace (i.e. trace of external program), run the exec (HINT: think recursion)
 
+            //remove top PCB process
+            free_memory(&current);
+            
+            //put new PCB process in its place in table
+            PCB current = PCB(current.partition_number + 1, current.partition_number, program_name, file_length, -1);
+            allocate_memory(&current);
 
+            //add to system status
+            system_status += print_PCB(current, wait_queue);
+
+            //exec recursion
+            auto [ex3, sys3, t3] = simulate_trace(exec_traces, current_time, vectors, delays, external_files, current, wait_queue);
+            execution += ex3;
+            system_status += sys3;
+            current_time += t3;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
