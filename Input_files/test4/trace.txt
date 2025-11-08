@@ -1,0 +1,7 @@
+FORK, 8
+IF_CHILD, 0
+EXEC program2, 30
+IF_PARENT, 0
+FORK, 18
+EXEC program1, 1
+ENDIF, 0
