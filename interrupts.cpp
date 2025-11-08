@@ -119,7 +119,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
 
             //allocate memory for fork
             wait_queue.push_back(current);
-            current = PCB(current.partition_number + 1, current.partition_number, "init", 1, -1);
+            current = PCB(current.PID + 1, current.PID, "init", 1, -1);
             allocate_memory(&current);
             
             //add to system status (output to be written into file)
@@ -131,6 +131,11 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             execution += ex2;
             system_status += sys2;
             current_time = t2;
+
+            //end process
+            free_memory(&current);
+            current = wait_queue.back();
+            wait_queue.pop_back();
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -182,13 +187,16 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
 
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the exec's trace (i.e. trace of external program), run the exec (HINT: think recursion)
+            
+            //prepare new PCB process
+            PCB new_current = PCB(current.PID, current.PID, program_name, file_length, -1);
 
             //remove top PCB process
             free_memory(&current);
-            
-            //put new PCB process in its place in table
-            PCB current = PCB(current.partition_number + 1, current.partition_number, program_name, file_length, -1);
-            allocate_memory(&current);
+
+            //put new PCB process in table
+            allocate_memory(&new_current);
+            current = new_current;
 
             //add to system status
             system_status += "time: " + std::to_string(current_time) + "; current trace: EXEC, " + program_name + ", " + std::to_string(duration_intr) + "\n";
@@ -200,10 +208,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             system_status += sys3;
             current_time = t3;
 
-            //end process after exec ends
-            free_memory(&current);
-            current = wait_queue.back();
-            wait_queue.pop_back();
+            //process ends in fork part of code (due to recursion)
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
