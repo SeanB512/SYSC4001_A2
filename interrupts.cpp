@@ -5,7 +5,7 @@
  *
  */
 
-#include<interrupts.hpp>
+#include"interrupts.hpp"
 
 std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string> trace_file, int time, std::vector<std::string> vectors, std::vector<int> delays, std::vector<external_file> external_files, PCB current, std::vector<PCB> wait_queue) {
 
@@ -129,7 +129,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             auto [ex2, sys2, t2] = simulate_trace(child_trace, current_time, vectors, delays, external_files, current, wait_queue);
             execution += ex2;
             system_status += sys2;
-            current_time += t2;
+            current_time = t2;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -146,7 +146,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             int file_length = get_size(program_name, external_files);
 
             //5) determine program length
-            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", Program is " + std::to_string(file_length) + " Mb large\n";
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr) + ", program is " + std::to_string(file_length) + " Mb large\n";
             current_time += duration_intr;
 
             //6) load program to memory
@@ -154,7 +154,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             current_time += file_length * 15;
 
             //7) mark parition
-            execution += std::to_string(current_time) + ", 3, marking parition as occupied\n";
+            execution += std::to_string(current_time) + ", 3, marking partition as occupied\n";
             current_time += 3;
 
             //8) update PCB
@@ -196,7 +196,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             auto [ex3, sys3, t3] = simulate_trace(exec_traces, current_time, vectors, delays, external_files, current, wait_queue);
             execution += ex3;
             system_status += sys3;
-            current_time += t3;
+            current_time = t3;
 
             //end process after exec ends
             free_memory(&current);
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
 
     /******************ADD YOUR VARIABLES HERE*************************/
 
-    
+
 
     /******************************************************************/
 
