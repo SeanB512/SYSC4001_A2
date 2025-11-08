@@ -118,6 +118,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             //With the child's trace, run the child (HINT: think recursion)
 
             //allocate memory for fork
+
             wait_queue.push_back(current);
             current = PCB(current.PID + 1, current.PID, current.program_name, current.size, -1);
             allocate_memory(&current);
