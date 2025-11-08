@@ -123,7 +123,8 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             allocate_memory(&current);
             
             //add to system status (output to be written into file)
-            system_status += print_PCB(current, wait_queue);
+            system_status += "time: " + std::to_string(current_time) + "; current trace: FORK, " + std::to_string(duration_intr) + "\n";
+            system_status += print_PCB(current, wait_queue) + "\n";
 
             //recursion for child:
             auto [ex2, sys2, t2] = simulate_trace(child_trace, current_time, vectors, delays, external_files, current, wait_queue);
@@ -190,7 +191,8 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             allocate_memory(&current);
 
             //add to system status
-            system_status += print_PCB(current, wait_queue);
+            system_status += "time: " + std::to_string(current_time) + "; current trace: EXEC, " + program_name + ", " + std::to_string(duration_intr) + "\n";
+            system_status += print_PCB(current, wait_queue) + "\n";
 
             //exec recursion (run program)
             auto [ex3, sys3, t3] = simulate_trace(exec_traces, current_time, vectors, delays, external_files, current, wait_queue);
